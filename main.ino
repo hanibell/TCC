@@ -10,7 +10,7 @@
 #define RPM 10
 
 // Definições do PID
-#define SETPOINT A1  // Controle do potenciometro
+#define SETPOINT A1  // Controle do potenciômetro
 #define LEITURA A0   // Leitura do sensor
 #define SAIDA 3      // Sinal de saída
 
@@ -60,7 +60,7 @@ void loop(){
 
     Serial.begin(115200);
 
-    Input = analogRead(AO);
+    Input = analogRead(LEITURA);
 
     Setpoint = analogRead(SETPOINT);
 

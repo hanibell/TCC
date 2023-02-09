@@ -18,12 +18,7 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8d346ec7-2239-4289-84f8-6a7976fbfdb1" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cmake-build-debug/CMakeFiles/clion-Debug-log.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/main.ino" afterDir="false" />
-    </list>
+    <list default="true" id="8d346ec7-2239-4289-84f8-6a7976fbfdb1" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -84,7 +79,7 @@
       <option name="presentableId" value="Default" />
       <updated>1675946808182</updated>
       <workItem from="1675946809707" duration="1245000" />
-      <workItem from="1675949953210" duration="311000" />
+      <workItem from="1675949953210" duration="819000" />
     </task>
     <servers />
   </component>
