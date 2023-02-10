@@ -52,6 +52,8 @@ void setup(){
     //Adjust PID values
     myPID.SetTunings(Kp, Ki, Kd);
 
+    myPID.SetOutputLimits(-255, 255);
+
     pinMode(SETPOINT, INPUT);
 
 }
@@ -62,7 +64,7 @@ void loop(){
 
     Input = analogRead(LEITURA);
 
-    Setpoint = analogRead(SETPOINT);
+    Setpoint = map(analogRead(SETPOINT),0,1023,480,800);
 
     // Calcula o PID
     myPID.Compute();
