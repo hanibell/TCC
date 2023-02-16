@@ -22,10 +22,12 @@ double Setpoint;  // Setpoint pelo bluetooth
 double Input;     // Sensor de temperatura
 double Output;    // Motor de passos
 
+double aux;
+
 // Parâmetros do PID
-double Kp=0.04;
-double Ki=0.0;
-double Kd=0.0;
+double Kp=0.02;
+double Ki=0.09;
+double Kd=0.00 ;
 
 // Variáveis do motor de passo
 int atual = 0;  // Variável global para armazenar o ângulo atual
@@ -70,10 +72,12 @@ void loop(){
     myPID.Compute();
 
     // Codigo do angulo
-    temp = Output;
+    temp = Output;                // Recebe o output do cálculo do PID
     temp = toStep(temp);          // Converter ângulo em temp para passo
+    aux = temp + atual;
     myStepper.step(temp);
     atual = (atual + temp) % 360; // Ângulo continua a armazenar o ângulo atualmente adicionado em unidades de 0 a 360 graus
+
 
     if(millis()-lastSend > 100){
         lastSend = millis();
