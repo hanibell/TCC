@@ -1,114 +1,164 @@
+#include <SoftwareSerial.h>
 #include <Stepper.h>
 #include <PID_v1.h>
 
-// Definições do motor de passos
-#define IN1 11 // IN1
-#define IN2 10 // IN2
-#define IN3 9  // IN3
-#define IN4 8  // IN4
-#define PASSOS 2048
-#define RPM 10
+#define IN1 11 // IN1 do motor de passos
+#define IN2 10 // IN2 do motor de passos
+#define IN3 9  // IN3 do motor de passos
+#define IN4 8  // IN4 do motor de passos
+#define LEITURA A1   // Leitura do sensor
 
-// Definições do PID
-#define SETPOINT A1  // Controle do potenciômetro
-#define LEITURA A0   // Leitura do sensor
-#define SAIDA 3      // Sinal de saída
+// Variaveis do motor e passos
+int PASSOS = 2048;
+int RPM = 10;
+int contadorPassos = 0;
+int posicaoMaxima = 300 * PASSOS / 360;
+int posicaoMinima = -300 * PASSOS / 360;
 
-// Variável para o plotter serial
-unsigned long lastSend = 0;
+//Define variaveis App bluetooth
+String bluetooth;
+int bluetooth_int;
+int bluetooth_setpoint = 31;
 
-// Variáveis do PID
+// Parâmetros do termistor
+const double beta = 3600.0;
+const double r0 = 10000.0;
+const double t0 = 273.0 + 25.0;
+const double rx = r0 * exp(-beta/t0);
+double temperatura;
+
+// Parâmetros do circuito
+const double vcc = 5.0;
+const double R = 10000.0;
+
+// Numero de amostras na leitura
+const int amostras = 10;
+
+// Variaveis do PID
 double Setpoint;  // Setpoint pelo bluetooth
-double Input;     // Sensor de temperatura
+double Input;     // Sensor de anguloeratura
 double Output;    // Motor de passos
 
-double aux;
+// Parametros do PID
+double Kp=0.30;
+double Ki=0.01;
+double Kd=0.03;
 
-// Parâmetros do PID
-double Kp=0.02;
-double Ki=0.09;
-double Kd=0.00 ;
-
-// Variáveis do motor de passo
-int atual = 0;  // Variável global para armazenar o ângulo atual
-int flag = 0;   // Sinalizador ativo ao inserir o ângulo através da comunicação serial
-int temp = 0;   // Recebe o angulo
-
-// Chama a função PID da biblioteca
+// Chama a funcao PID da biblioteca
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
-// Chama a função do Motor de passo
+// Chama a funcao do Motor de passo
 Stepper myStepper(PASSOS, IN1, IN3, IN2, IN4);
 
-void setup(){
+// TX-RX Bluetooth
+SoftwareSerial HC05(2, 3);
 
-    Serial.begin(115200);
+void setup(){
+    Serial.begin(9600);
+
+    pinMode(LEITURA, INPUT);
+
+    // Taxa de transmissao
+    HC05.begin(9600);
 
     myStepper.setSpeed(RPM);
 
-    Input = analogRead(LEITURA);
+    // Filtro do sensor de temperatura
+    int soma = 0;
+    for (int i = 0; i < amostras; i++) {
+        soma += analogRead(LEITURA);
+        delay (1);
+    }
 
-    //Turn the PID on
+    // Determina a resistência do termistor
+    double v = (vcc*soma)/(amostras*1024.0);
+    double rt = (vcc*R)/v - R;
+
+    // Calcula a temperatura
+    double t = beta / log(rt/rx);
+    temperatura = t-273.0;
+
+    Input = temperatura;
+
+    // Liga o PID
     myPID.SetMode(AUTOMATIC);
 
-    //Adjust PID values
+    // Ajusta os valores do PID
     myPID.SetTunings(Kp, Ki, Kd);
-
-    myPID.SetOutputLimits(-255, 255);
-
-    pinMode(SETPOINT, INPUT);
+    myPID.SetOutputLimits(-255,255);
 
 }
 
 void loop(){
 
-    Serial.begin(115200);
+    Serial.begin(9600);
 
-    Input = analogRead(LEITURA);
+    // Filtro do sensor de temperatura
+    int soma = 0;
+    for (int i = 0; i < amostras; i++) {
+        soma += analogRead(LEITURA);
+        delay (1);
+    }
 
-    Setpoint = map(analogRead(SETPOINT),0,1023,480,800);
+    // Determina a resistência do termistor
+    double v = (vcc*soma)/(amostras*1024.0);
+    double rt = (vcc*R)/v - R;
+
+    // Calcula a temperatura
+    double t = beta / log(rt/rx);
+    temperatura = t-273.0;
+
+    Input = temperatura;
+
+    // Setpoint pelo bluetooth
+    Setpoint = bluetooth_setpoint;
+    bluetooth = HC05.read();
+    bluetooth_int =  bluetooth.toInt();
+    if(bluetooth_int > -1){    //verifica se foi mandado algum valor pelo bluetooth.
+        Setpoint = bluetooth_setpoint = bluetooth.toInt();
+    }
 
     // Calcula o PID
     myPID.Compute();
 
-    // Codigo do angulo
-    temp = Output;                // Recebe o output do cálculo do PID
-    temp = toStep(temp);          // Converter ângulo em temp para passo
-    aux = temp + atual;
-    myStepper.step(temp);
-    atual = (atual + temp) % 360; // Ângulo continua a armazenar o ângulo atualmente adicionado em unidades de 0 a 360 graus
+    // Output para o motor de passos
+    // Limitador de passos
+    if (contadorPassos < posicaoMaxima) {
+        myStepper.step(Output);
+        contadorPassos++;
 
-
-    if(millis()-lastSend > 100){
-        lastSend = millis();
-
-        Serial.print(Setpoint);
-        Serial.print(" ");
-        Serial.print(Input);
-        Serial.print(" ");
-        Serial.print(Output);
-        Serial.println(" ");
-        //delay(100);
+        if(contadorPassos > posicaoMinima) {
+            myStepper.step(Output);
+            contadorPassos--;
+        }
     }
 
-    delay(100);
+    Serial.print(Setpoint);
+    Serial.print(" ");
+    Serial.print(Input);
+    //Serial.print(" ");
+    //Serial.print(Output);
+    //Serial.print(" ");
+    //Serial.print(atual);
+    Serial.println(" ");
+
+    delay(10);
+
 }
 
-// Converte ângulo recebido da comunicação serial para passo
-// Ambos os ângulos CW e CCW estão disponíveis
-// pode lidar mesmo que exceda 360 graus
-int toStep(int atual){
-    int quotient = atual / 360;
-    int remainder = atual % 360;
-    remainder = map(remainder, -360, 360, -2048, 2048);
-    if(abs(quotient) > 0)
-        return (2048 * quotient) + remainder;
-    else
-        return remainder;
-}
-
-//descrição do código
-//angle = ( angle + temp ) % 360 : Salve o ângulo absoluto do motor de passo a ser alterado na variável de ângulo. temp é o ângulo recebido através da comunicação serial.
-//serialEvent() : Esta função é chamada quando há dados no buffer de recepção serial. Quando um número é inserido através da comunicação serial e então um enter é pressionado, o sinalizador é ativado como verdadeiro.
-//toStep() : Retorna o número inserido através da comunicação serial como o número de voltas. O código foi escrito para processar números inseridos acima de ±360º.
-//ErrorHandler() : Esta função emite um erro quando os valores normais de ângulo (número) não são recebidos através da comunicação serial.
+// Filtro para o input do sensor
+//float filtroSensor(){
+//
+//  for(int i=0; i<amostras; i++){
+//    double temperature;
+//    media += temperature;
+//
+//    delay(1);
+//    }
+//
+//  leitura = media/amostras;
+//
+//  return leitura;
+//
+//  delay(1);
+//}
